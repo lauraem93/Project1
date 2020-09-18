@@ -2,25 +2,21 @@
 title: "Project 1"
 author: "Laura Mathews"
 date: "9/12/2020"
-output: rmarkdown::github_document
+output: 
+  rmarkdown::github_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Things that need to be fixed
-+ all of set up
-+ use render(input = "Project 1.Rmd", output_file = "README.md")
-+ blog
-+ if record/filter/modifier is given then change the url otherwise leave it alone
-+ No encoding supplied message
-
 # Required Packages:
-httr
-jsonlite
-tidyverse
-dplyr
++ httr
++ jsonlite
++ tidyverse
++ dplyr
++ knitr: needed for exploratory data analysis
 
 ```{r, warning = FALSE}
 #Read in required packages
@@ -41,47 +37,74 @@ hockey <- fromJSON(content(hockey, "text"), flatten = TRUE)
 ```
 
 ```{r}
-base_url <- "https://records.nhl.com/site/api"
 
 records_API <- function(endpoint, record = NULL, filter = NULL){
+
+  base_url <- "https://records.nhl.com/site/api"
+
+  #Note: When looking at the records API information, I interpreted the url to have a main endpoint, such as "franchise" and then a specific record, such as "team totals", and finally filters. This is reflected in the function variables.
+  
+  #To be able to filter by franchiseId where either the team name or ID number are given, need to first check if filter is franchiseId and then if the ID is character or number. If franchiseId is character, get the team name and Id data and find the corresponding team number.
+
+  if (is.null(filter) == FALSE){
+  
+  teamId <- str_split(filter, pattern = "=", n = 2, simplify = TRUE)
+  filter_name <- str_trim(teamId[1])
+  teamId <- str_trim(teamId[-1])
+  
+ if (grepl("\\d", teamId) == TRUE){
+  filter <- filter
+} else if (grepl("\\d", teamId) == FALSE){
+    
+    teamdata<- GET("https://records.nhl.com/site/api/franchise")
+    teamdata<- fromJSON(content(teamdata, "text"), flatten = TRUE)
+    teamdata<- teamdata$data
+    teamdata<- select(teamdata, mostRecentTeamId, teamPlaceName, teamCommonName) %>% arrange(mostRecentTeamId) %>% rename(id = mostRecentTeamId) %>% unite(teamPlaceName, teamCommonName, col = "name", sep = " ")
+
+    teamId2 <- filter(teamdata, name == teamId) %>% select(id) %>% unlist()
+    filter <- paste0(filter_name, "=", teamId2)
+}
+}
+  
   #Create the URL
   
   url<-paste0(base_url, "/", gsub(pattern = " ", replacement = "-", x = endpoint))
+  
+  #Add record if given
   
   if (is.null(record) == FALSE){
     record<- tolower(gsub(pattern = " ", replacement = "-", x = record))
     url<-paste0(url, "-", record)
   }
   
+  #Add filter if given
+  
   if (is.null(filter) == FALSE){
     
     #Player filters
+    
     if (tolower(endpoint) == "player"){
     filter <- gsub("\\D", "", filter)
     url <- paste0(url, "/byTeam/", filter)
-    } else if (length(filter) == 1) {
-      
+    
       #General filters
+    } else if (length(filter) == 1) {
       filter<-gsub(pattern = " ", replacement = "", x = filter)
       url<-paste0(url, "?cayenneExp=", filter)
-    } else if (length(filter) > 1) {
-        filter<-gsub(pattern = " ", replacement = "", x = filter) %>% paste(collapse = "%20and%20")
-        url<-paste0(url, "?cayenneExp=", filter)
-   }
+      
+      #If there is more than one filter
+      } else if (length(filter) > 1) {
+          filter<-gsub(pattern = " ", replacement = "", x = filter) %>% paste(collapse = "%20and%20")
+          url<-paste0(url, "?cayenneExp=", filter)
+      }
   }
   
   hockey_data <- GET(url) %>% content("text") %>% fromJSON(flatten = TRUE)
-
-  #Note: above returns a list of 2 items, "data" and "total", assuming that only the data is what you would want to return
   
   hockey_data <- hockey_data$data
     
   return(hockey_data)
 }
-
-#full_url <- paste0(base_url, "/", tab_name, "/", poke_name)
-
-#pikachu <- GET(full_url) %>% content("text") %>% fromJSON(flatten = TRUE)
 
 #Test code so I don't have to keep typing it in: 
 #records_API(endpoint = "franchise", record = "season results", filter = "franchiseId = ID")
@@ -92,6 +115,30 @@ records_API <- function(endpoint, record = NULL, filter = NULL){
 ```{r}
 stats_API <- function(endpoint, ID = NULL, modifier = NULL, teamID = NULL, stats = NULL, season = NULL){
   base_url <- "https://statsapi.web.nhl.com/api/v1"
+  
+    #To be able to filter by franchiseId where either the team name or ID number are given, need to first check if filter is franchiseId and then if the ID is character or number. If franchiseId is character, get the team name and Id data and find the corresponding team number.
+
+  if (is.null(teamID) == FALSE){
+    
+    #for length teamID, if teamID[i] is character, get team name
+    
+    for (i in 1:length(teamID)){
+      if (grepl("\\d", teamID[i]) == TRUE){
+        teamID[i] <- teamID[i]
+      } else if (grepl("\\d", teamID[i]) == FALSE){
+    
+    teamdata<- GET("https://records.nhl.com/site/api/franchise")
+    teamdata<- fromJSON(content(teamdata, "text"), flatten = TRUE)
+    teamdata<- teamdata$data
+    teamdata<- select(teamdata, mostRecentTeamId, teamPlaceName, teamCommonName) %>% arrange(mostRecentTeamId) %>% rename(id = mostRecentTeamId) %>% unite(teamPlaceName, teamCommonName, col = "name", sep = " ")
+
+    teamId2 <- filter(teamdata, name == teamID[i]) %>% select(id) %>% unlist()
+    teamID[i] <- teamId2
+}
+    }
+  }
+  
+ #Create URL
   
   url <- paste0(base_url, "/", endpoint)
   
@@ -104,7 +151,7 @@ stats_API <- function(endpoint, ID = NULL, modifier = NULL, teamID = NULL, stats
   }
   
   if (is.null(modifier) == FALSE){
-    modifier <- gsub(pattern = " ", replacement = ".", x = modifier)
+    modifier <- tolower(gsub(pattern = " ", replacement = ".", x = modifier))
     url <- paste0(url, "?expand=", modifier)
   }
   
@@ -113,7 +160,6 @@ stats_API <- function(endpoint, ID = NULL, modifier = NULL, teamID = NULL, stats
     url <- paste0(url, "?teamId=", teamID)
   }
   
-  #find way to put stats into camel case?
   if(is.null(stats) == FALSE){
     stats <- paste(stats, collapse = "")
     url <- paste0(url, "?stats=", stats)
@@ -132,40 +178,159 @@ stats_API <- function(endpoint, ID = NULL, modifier = NULL, teamID = NULL, stats
 }
 ```
 
-# Exploratory Data Analysis
+# Create a wrapper function to access either API
 
 ```{r}
-record_data <- records_API(endpoint = "franchise", record = "season Records")
+hockey_api <- function(API, endpoint, ...){
+  if (tolower(API) == "records"){
+    data <- records_API(endpoint, ...)
+  } else if (tolower(API) == "stats"){
+    data <- stats_API(endpoint, ...)
+  }
+  
+  return(data)
+}
+```
 
-#record_data <- record_data$data
+# Exploratory Data Analysis
 
-stats_data <- stats_API(endpoint = "teams", modifier = "stats")
+## Obtain and Manipulate Data:
+
+```{r}
+record_data <- hockey_api(API = "records", endpoint = "franchise", record = "season Records")
+
+stats_data <- hockey_api(API = "stats", endpoint = "teams", modifier = "team stats")
 
 joined_data <- inner_join(record_data, stats_data, by = "franchiseId")
+
+goalie <- hockey_api(API = "records", endpoint = "franchise", record = "goalie records")
+
+#Add proportion of rookie games won to rookie games played to goalie data
+goalie <- mutate(goalie, rookieWinProp = rookieWins/rookieGamesPlayed)
+
+team_stats1 <- hockey_api(API = "stats", endpoint = "teams", modifier = "team stats", season = "2014 2015")
+
+team_stats2 <- hockey_api(API = "stats", endpoint = "teams", modifier = "team stats", season = "2012 2013")
+
+team_stats1$division.nameShort <- NULL
+team_stats1$division.abbreviation <- NULL
+
+team_stats <- rbind(team_stats1, team_stats2)
+
+division <- select(team_stats, id, name, division.id, division.name, conference.id, conference.name, franchise.franchiseId)
+division <- rename(division, franchiseId = franchise.franchiseId)
+
+skater1 <- hockey_api(API = "records", endpoint = "franchise", record = "skater records", filter = "franchiseId = 2")
+
+skater2 <- hockey_api(API = "records", endpoint = "franchise", record = "skater records", filter = "franchiseId = 4")
+
+skater3 <- hockey_api(API = "records", endpoint = "franchise", record = "skater records", filter = "franchiseId = 6")
+
+skater <- rbind(skater1, skater2, skater3)
+
+goalie_division <- inner_join(goalie, division, by = "franchiseId")
 ```
+## Table of Fewest Losses by Win Streak
+The table compares fewest losses with number of games in win streak. There is no clear pattern between fewest losses and win streak. The most common win streak length was 11-15 games and the most common number of fewest losses was 16-20 losses.
+
+## Table of Most Goals against the Goalie by Division Name
+The table shows the most goals made against each goalie categorized by division name. There is no clear pattern based on division name. However, the counts for each division of most goals against seems to drop after 11.
+
+## Table of Number of Seasons Played by a Goalie grouped by Team
+
+The table shows the number of seasons played by a goalie. The data is grouped by team. The majority of players play less than 8 seasons.
 
 ```{r}
 win_streak_cat <- vector()
 
-win_streak_cat <- ifelse(joined_data$winStreak <= 10, "<= 10", ifelse(joined_data$winStreak <= 15, "11-15", "> 15"))
+win_streak_cat <- ifelse(joined_data$winStreak <= 10, "<= 10 Wins", ifelse(joined_data$winStreak <= 15, "11-15 Wins", "> 15 Wins"))
 
 joined_data$win_streak_cat <- win_streak_cat
 
 loss_cat <- vector()
 
-loss_cat <- ifelse(joined_data$fewestLosses <= 10, "<= 10", ifelse(joined_data$fewestLosses <= 15, "11-15", ifelse(joined_data$fewestLosses <= 20, "16-20", ifelse(joined_data$fewestLosses <= 25, "21-25", ifelse(joined_data$fewestLosses >25, "> 25", "other")))))
+loss_cat <- ifelse(joined_data$fewestLosses <= 10, "<= 10 Losses", ifelse(joined_data$fewestLosses <= 15, "11-15 Losses", ifelse(joined_data$fewestLosses <= 20, "16-20 Losses", ifelse(joined_data$fewestLosses <= 25, "21-25", ifelse(joined_data$fewestLosses >25, "> 25 Losses", "other")))))
 
 joined_data$loss_cat <- loss_cat
 
 kable(table(joined_data$loss_cat, joined_data$win_streak_cat), caption = "Table of Fewest Losses by Win Streak")
+
+kable(table(goalie_division$division.name, goalie_division$mostGoalsAgainstOneGame), caption = "Most Goals against the Goalie by Division")
+
+kable(table(goalie_division$franchiseName, goalie_division$seasons), caption = "Number of Seasons Played by Team")
 ```
 
+
+# Plots
+
+## Most Wins Bar Plot
+The most wins bar plot has number of wins on the x axis and a count of how many teams have that number of "most wins" on the y axis. The bar plot looks similar to a normal distribution with the mean around 52-53 wins.
+
+## Fewest Goals Against Histogram
+The fewest goals against histogram shows the count for each value of the fewest goals against. This histogram does not appear to have a pattern. There is not really a clear distribution that the histogram resembles.
+
+## Most goals saved in one game by franchise name
+The histogram shows the most saves made by a goalie in one game. The data is grouped by franchise name. There is no clear relationship between the team that a goalie is on and the number of goals saved in one game. The histogram does resemble a normal distribution with the mean around 40 saves in one game.
+
+## Rookie wins vs rookie games played scatterplot and Rookie win proportion vs rookie games played scatterplot
+The scatterplot shows the number of rookie games won vs the number of rookie games played. There appears to be a linear association between the number of games won and the number of games played; however, there is a clear upper limit to the number of games won as you can't win more than you played. The correlation between the two variables is 0.83. When the plot is redone using the proportion of wins to games played, the correlation is much lower, 0.34.
+
+## Most penalty minutes in one season boxplot
+The box plot shows the most penalty minutes in one season for skaters on three different teams: Boston Bruins, Hamilton Tigers, and Montreal Wanderers. There does not appear to be a large difference between the Boston Bruins and Hamilton Tigers. The spread is very small for the Montreal Wanderers and the mean is lower than the other teams. However, looking at the data, the Montreal Wanderers only have records on 11 players and only 5 had nonzero values for most penalty minutes in one season.
 ```{r}
 g <- ggplot(joined_data,aes(x = mostWins))
 
-g + geom_bar() #aes(fill = as.factor(teamName)) , position = "dodge")
+g + geom_bar(fill = "green") + scale_x_discrete(name = "Most Wins") + ggtitle("Most Wins") #aes(fill = as.factor(teamName)))
 
 g <- ggplot(data = joined_data, aes(x = fewestGoalsAgainst))
 
-g + geom_histogram()
+g + geom_histogram(color = "pink", fill = "blue")  + scale_x_continuous(name = "Fewest Goals Against") + ggtitle("Fewest Goals Against")
+
+g<- ggplot(data = goalie, aes(x = mostSavesOneGame))
+
+g + geom_histogram(aes(fill = as.factor(franchiseName))) + ggtitle("Most saves made in one game by franchise name") + scale_fill_discrete(name = "Franchise Names")
+
+g<- ggplot(data = goalie, aes(x = rookieGamesPlayed, y = rookieWins))
+
+goalie_rookie<-select(goalie, rookieGamesPlayed, rookieWins) %>% na.omit
+correlation <- cor(x = goalie_rookie$rookieGamesPlayed, y = goalie_rookie$rookieWins)
+
+g + geom_point(color = "purple") + scale_x_continuous(name = "Rookie Games Played") + scale_y_continuous(name = "Rookie Wins") + ggtitle("Rookie Wins vs Rookie Games Played") + geom_smooth(method = lm, col = "red") + geom_text(x = 20, y = 40, label = paste0("Correlation = ", round(correlation,2)))
+
+#Win Proportion
+g<- ggplot(data = goalie, aes(x = rookieGamesPlayed, y = rookieWinProp))
+
+goalie_rookie<-select(goalie, rookieGamesPlayed, rookieWinProp) %>% na.omit
+correlation <- cor(x = goalie_rookie$rookieGamesPlayed, y = goalie_rookie$rookieWinProp)
+
+g + geom_point(color = "purple") + scale_x_continuous(name = "Rookie Games Played") + scale_y_continuous(name = "Rookie Win Proportion") + ggtitle("Rookie Win Proportion vs Rookie Games Played") + geom_smooth(method = lm, col = "red") + geom_text(x = 10, y = .6, label = paste0("Correlation = ", round(correlation,2)))
+
+g <- ggplot(skater, aes(y = mostPenaltyMinutesOneSeason))
+
+g + geom_boxplot(aes(fill = as.factor(franchiseName))) + ggtitle("Most Penalty Minutes in One Season for Skaters of Three Teams") + scale_x_discrete(name = "Team", labels = c("Boston Bruins", "Hamilton Tigers", "Montreal Wanderers")) + scale_y_continuous(name = "Most Penalty Minutes One Season") + scale_fill_discrete(name = "Team Name")
+```
+
+# Numerical Summaries
+
+```{r}
+
+#Goalie Losses summary by division
+goalie_division %>% group_by(division.name) %>% summarise(avg = mean(losses), med = median(losses), var = var(losses)) %>% kable(caption = "Goalie Losses Summary by Division")
+
+#Goalie Wins summary by division
+goalie_division %>% group_by(division.name) %>% summarise(avg = mean(wins), med = median(wins), var = var(wins)) %>% kable(caption = "Goalie Wins Summary by Division")
+
+#Goalie Losses summary by team
+goalie_division %>% group_by(franchiseName) %>% summarise(avg = mean(losses), med = median(losses), var = var(losses)) %>% kable(caption = "Goalie Losses Summary by Team")
+
+#Goalie Wins summary by team
+goalie_division %>% group_by(franchiseName) %>% summarise(avg = mean(wins), med = median(wins), var = var(wins)) %>% kable(caption = "Goalie Wins Summary by Team")
+
+#Overall Goals Summary
+summary(skater$goals)
+
+#Goals Summary by Team
+group_by(skater, franchiseName, franchiseId) %>% summarise(avg = mean(goals), med = median(goals), var = var(goals)) %>% kable(caption = "Goals Summary by Team")
+
+
 ```
