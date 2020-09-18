@@ -3,7 +3,6 @@ Project 1
 Laura Mathews
 9/12/2020
 
-  - [Things that need to be fixed](#things-that-need-to-be-fixed)
   - [Required Packages:](#required-packages)
   - [Functions to contact the NHL records
     API](#functions-to-contact-the-nhl-records-api)
@@ -31,15 +30,6 @@ Laura Mathews
       - [Most penalty minutes in one season
         boxplot](#most-penalty-minutes-in-one-season-boxplot)
   - [Numerical Summaries](#numerical-summaries)
-
-# Things that need to be fixed
-
-  - all of set up
-  - use render(input = “Project 1.Rmd”, output\_file = “README.md”)
-  - blog
-  - if record/filter/modifier is given then change the url otherwise
-    leave it alone
-  - No encoding supplied message
 
 # Required Packages:
 
