@@ -38,6 +38,7 @@ Laura Mathews
   - tidyverse
   - dplyr
   - knitr: needed for exploratory data analysis
+  - rmarkdown
 
 <!-- end list -->
 
@@ -63,6 +64,7 @@ library(tidyverse)
 ``` r
 library(dplyr)
 library(knitr)
+library(rmarkdown)
 ```
 
 # Functions to contact the NHL records API

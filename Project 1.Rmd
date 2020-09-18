@@ -10,7 +10,9 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-render("Project-1.md", output_file = "README.md")
+#Code needed to change to readme.md:
+
+#render("Project-1.md", output_file = "README.md")
 ```
 
 # Required Packages:

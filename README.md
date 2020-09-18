@@ -399,6 +399,7 @@ summary {
 <li>tidyverse</li>
 <li>dplyr</li>
 <li>knitr: needed for exploratory data analysis</li>
+<li>rmarkdown</li>
 </ul>
 <!-- end list -->
 <pre class="r"><code>#Read in required packages
@@ -417,7 +418,8 @@ library(tidyverse)</code></pre>
 ## x purrr::flatten() masks jsonlite::flatten()
 ## x dplyr::lag()     masks stats::lag()</code></pre>
 <pre class="r"><code>library(dplyr)
-library(knitr)</code></pre>
+library(knitr)
+library(rmarkdown)</code></pre>
 </div>
 <div id="functions-to-contact-the-nhl-records-api" class="section level1">
 <h1>Functions to contact the NHL records API</h1>
