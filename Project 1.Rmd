@@ -9,6 +9,8 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+render("Project-1.md", output_file = "README.md")
 ```
 
 # Required Packages:
@@ -17,6 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 + tidyverse
 + dplyr
 + knitr: needed for exploratory data analysis
++ rmarkdown
 
 ```{r, warning = FALSE}
 #Read in required packages
@@ -25,6 +28,7 @@ library(jsonlite)
 library(tidyverse)
 library(dplyr)
 library(knitr)
+library(rmarkdown)
 ```
 
 # Functions to contact the NHL records API
